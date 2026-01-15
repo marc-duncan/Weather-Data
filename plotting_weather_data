@@ -1,0 +1,227 @@
+# Name:           Marc Duncan
+# Project:        Weather_data (individual)
+# Date:           11/02/2025
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+#store the data from the CSV
+all_data = []
+
+#converting the str to a 
+def float_convert(value):
+    """convert strings to float inside the dictionary"""
+    value = value.strip().replace("'", "")
+    return float(value) if value else None
+
+#open and read the CSV file
+with open('WeatherDataCLL.csv', "r") as file:
+    lines = [line.strip() for line in file]
+
+    #skip the header
+    for line in lines[1:]:
+        row = line.split(',')
+
+        #check if the row has enough columns
+        if len(row) < 10:
+            continue
+
+        #extract date field
+        date_str = row[0].strip().replace("'", "")
+        date_parts = date_str.split('/')
+
+        if len(date_parts) != 3:
+            continue
+
+        month, day, year = date_parts
+
+        #dictionary for month collection
+        #needs to be converted into a str --> float
+        record = {
+            'date': date_str,
+            'month': int(month),
+            'day': int(day),
+            'year': int(year),
+            'dew_point': float_convert(row[1].strip().replace("'", "")),
+            'pressure': float_convert(row[2].strip().replace("'", "")),
+            'wet_bulb': float_convert(row[3].strip().replace("'", "")),
+            'wind_speed': float_convert(row[4].strip().replace("'", "")),
+            'precipitation': float_convert(row[5].strip().replace("'", "")),
+            'humidity': float_convert(row[6].strip().replace("'", "")),
+            'avg_temp': float_convert(row[7].strip().replace("'", "")),
+            'high_temp': float_convert(row[8].strip()) if row[8].strip() else None,
+            'low_temp': float_convert(row[9].strip()) if row[9].strip() else None
+        }
+        all_data.append(record)
+
+#############
+## GRAPH 1 ##
+plt.figure(1, figsize=(12, 6))
+
+#collect the wet bulb and pressure data
+wetbulb_data = []
+pressure_data = []
+wetbulb_days = []
+pressure_days = []
+
+#loop to collect wet bulb data and days
+for i in range(len(all_data)):
+    if all_data[i]['wet_bulb'] is not None:
+        wetbulb_data.append(all_data[i]['wet_bulb'])
+        wetbulb_days.append(i) 
+
+#loop to collect pressure data and days
+for i in range(len(all_data)):
+    if all_data[i]['pressure'] is not None:
+        pressure_data.append(all_data[i]['pressure'])
+        pressure_days.append(i)
+
+#y-axis 1 for bulb temperature
+ax1 = plt.gca()
+line1 = ax1.plot(wetbulb_days, wetbulb_data, 'r-', label='Avg Wet Bulb Temp', linewidth=1)
+ax1.set_xlabel('Date', fontsize=12)
+ax1.set_ylabel('Average Wet Bulb Temperature. F', color='black', fontsize=12)
+ax1.tick_params(axis='y', labelcolor='black')
+
+#y-axis 2 for pressure
+ax2 = ax1.twinx()
+line2 = ax2.plot(pressure_days, pressure_data, 'b-', label='Avg Pressure', linewidth=1)
+ax2.set_ylabel('Average Pressure. in Hg', color='black', fontsize=12)
+ax2.tick_params(axis='y', labelcolor='black')
+
+#combine legends from both axes
+lines = line1 + line2
+labels = [l.get_label() for l in lines]
+ax1.legend(lines, labels, loc='lower left')
+
+plt.title('Average Wet Bulb Temperature and Pressure', fontsize=14, fontweight='bold')
+plt.tight_layout()
+#plt.show()
+
+#############
+## GRAPH 2 ##
+plt.figure(2, figsize=(10, 6))
+
+#collect wind speed data
+wind_speeds = [record['wind_speed'] for record in all_data if record['wind_speed'] is not None]
+
+plt.hist(wind_speeds, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
+plt.xlabel('Average Wind Speed. mph', fontsize=12)
+plt.ylabel('Number of Days', fontsize=12)
+plt.title('Histogram of Average Wind Speed', fontsize=14, fontweight='bold')
+plt.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+#plt.show()
+
+#############
+## GRAPH 3 ##
+plt.figure(3, figsize=(10, 6))
+
+#extract humidity and dew point data
+humidity_data = []
+dew_point_data = []
+for record in all_data:
+    if record['humidity'] is not None and record['dew_point'] is not None:
+        humidity_data.append(record['humidity'])
+        dew_point_data.append(record['dew_point'])
+
+#plotting the information
+plt.scatter(humidity_data, dew_point_data, alpha=0.5, c='green', edgecolors='darkgreen', s=10)
+plt.xlabel('Average Relative Humidity (%)', fontsize=12)
+plt.ylabel('Average Dew Point (F)', fontsize=12)
+plt.title('Average Relative Humidity vs Average Dew Point', fontsize=14, fontweight='bold')
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+#plt.show()
+
+#############
+## GRAPH 4 ##
+plt.figure(4, figsize=(12, 7))
+
+#dictionary to store monthly data
+monthly_data = {}
+for month in range(1, 13):
+    monthly_data[month] = {
+        'avg_temps': [],
+        'high_temps': [],
+        'low_temps': [],
+        'precipitation': []
+    }
+
+#collect data for each month
+for record in all_data:
+    month = record['month']
+
+    if record['avg_temp'] is not None:
+        monthly_data[month]['avg_temps'].append(record['avg_temp'])
+
+    if record['high_temp'] is not None:
+        monthly_data[month]['high_temps'].append(record['high_temp'])
+
+    if record['low_temp'] is not None:
+        monthly_data[month]['low_temps'].append(record['low_temp'])
+
+    if record['precipitation'] is not None:
+        monthly_data[month]['precipitation'].append(record['precipitation'])
+
+#calculate the stats for each month
+months = list(range(1, 13))
+
+mean_avg_temps = []
+highest = []
+lowest = []
+mean_precipitations = []
+
+for month in months:
+    data = monthly_data[month]
+    
+    mean_avg = np.mean(data['avg_temps']) if data['avg_temps'] else 0
+
+    highest_high = max(data['high_temps']) if data['high_temps'] else 0
+
+    lowest_low = min(data['low_temps']) if data['low_temps'] else 0
+
+    mean_precip = np.mean(data['precipitation']) if data['precipitation'] else 0
+   
+    #append the data to their respective lists
+    mean_avg_temps.append(mean_avg)
+    highest.append(highest_high)
+    lowest.append(lowest_low)
+    mean_precipitations.append(mean_precip)
+
+#draw the bar chart for mean average temperature
+bars = plt.bar(months, mean_avg_temps, color='orange', alpha=0.7, label='Mean Avg Temperature')
+
+#lines for highest and lowest temperatures
+plt.plot(months, highest, 'r', linewidth=2, markersize=6, label='High T')
+plt.plot(months, lowest, 'b', linewidth=2, markersize=6, label='Low T')
+
+#add a 2nd y-axis for precipitation
+ax1 = plt.gca()
+ax2 = ax1.twinx()
+precip_line = ax2.plot(months, mean_precipitations, 'g', linewidth=2, markersize=6, 
+                       label='Precip', markerfacecolor='green')
+
+ax2.set_ylabel('Monthly Precipitation', fontsize=12, color='black')
+ax2.tick_params(axis='y', labelcolor='g')
+
+#set labels and title
+ax1.set_xlabel('Month', fontsize=12)
+
+ax1.set_ylabel('Temperature. F', fontsize=12)
+
+ax1.set_xticks(months)
+
+ax1.set_xticklabels(['1', '2', '3', '4', '5', '6', 
+                     '7', '8', '9', '10', '11', '12'])
+
+plt.title('Temperature and Precipitation by Month', fontsize=14, fontweight='bold')
+
+#combine legends
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+plt.tight_layout()
+
+#outputs all graphs
+plt.show()
